@@ -1,6 +1,39 @@
 # site-doc-gen
 
-A Python-based documentation site crawler and content extractor, inspired by siteFetch.
+A Python-based documentation site crawler and content extractor with a web interface, inspired by siteFetch.
+
+## Quick Start
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/trevadelman/site-doc-gen.git
+cd site-doc-gen
+
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install with web interface dependencies
+pip install -e ".[web]"
+```
+
+### Running the Web Interface
+
+```bash
+# Start the Flask application
+cd web_interface
+python app.py
+```
+
+The web interface will be available at `http://localhost:5005` with the following features:
+
+- Generate documentation from GitHub repositories or websites
+- Configure crawling settings (concurrency, URL patterns, etc.)
+- View and manage generated documentation
+- Access source URLs and documentation pages
+- Split-page mode with navigation
 
 ## Core Features
 
@@ -78,7 +111,7 @@ output/
         └── ...
 ```
 
-## Usage Examples
+## Programmatic Usage
 
 ### Basic Usage
 ```python
@@ -143,6 +176,9 @@ markdown = "^3.3.4"
 pydantic = "^2.0.0"
 pygments = "^2.10.0"
 readability-lxml = "^0.8.1"
+
+[dependencies.web]
+flask = "^3.0.2"
 ```
 
 ## Development Status
@@ -160,6 +196,7 @@ readability-lxml = "^0.8.1"
 - [x] Site-specific directories
 - [x] Navigation links
 - [x] Index generation
+- [x] Web interface
 
 ### Planned Features
 - [ ] PDF documentation support
