@@ -1,0 +1,42 @@
+[project]
+name = "site-doc-gen"
+version = "0.1.0"
+description = "A Python-based documentation site crawler and content extractor"
+authors = []
+requires-python = ">=3.9"
+dependencies = [
+    "aiohttp>=3.11.12",
+    "beautifulsoup4>=4.13.3",
+    "markdown>=3.7",
+    "pydantic>=2.10.6",
+    "pygments>=2.17.2",
+    "readability-lxml>=0.8.1",
+    "markdownify>=0.11.6",
+    "lxml[html_clean]>=5.3.1"
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.25.3"
+]
+web = [
+    "flask>=3.0.2"
+]
+
+[project.scripts]
+site-doc-gen = "site_doc_gen.cli:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"

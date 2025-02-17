@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Generate Documentation{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="card-title mb-4">
+                    <i class="bi bi-file-earmark-text me-2"></i>Generate Documentation
+                </h2>
+                <form method="POST" class="needs-validation" novalidate>
+                    <!-- Source URL -->
+                    <div class="mb-4">
+                        <label for="url" class="form-label fw-bold">Source URL</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                            <input type="url" class="form-control" id="url" name="url" required 
+                                   placeholder="https://github.com/user/repo or https://website.com">
+                        </div>
+                        <div class="form-text text-muted">
+                            <i class="bi bi-info-circle me-1"></i>Enter a GitHub repository URL or website URL
+                        </div>
+                    </div>
+
+                    <!-- Crawling Settings -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">
+                                <i class="bi bi-gear me-2"></i>Crawling Settings
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="concurrency" class="form-label">Concurrency</label>
+                                        <input type="number" class="form-control" id="concurrency" name="concurrency" 
+                                               value="3" min="1" max="10">
+                                        <div class="form-text">Concurrent requests (1-10)</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="max_pages" class="form-label">Max Pages</label>
+                                        <input type="number" class="form-control" id="max_pages" name="max_pages" 
+                                               value="0" min="0">
+                                        <div class="form-text">0 for unlimited</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="match" class="form-label">URL Patterns</label>
+                                <input type="text" class="form-control" id="match" name="match" 
+                                       placeholder="*/docs/*,*/api/*">
+                                <div class="form-text">Comma-separated patterns (e.g., */docs/*,*/api/*)</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="content_selector" class="form-label">Content Selector</label>
+                                <input type="text" class="form-control" id="content_selector" name="content_selector" 
+                                       placeholder="article.content">
+                                <div class="form-text">CSS selector for main content</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Output Settings -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">
+                                <i class="bi bi-file-earmark-text me-2"></i>Output Settings
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label d-block">Output Format</label>
+                                <div class="btn-group" role="group">
+                                    <input type="radio" class="btn-check" name="output_format" id="markdown" value="markdown" checked>
+                                    <label class="btn btn-outline-primary" for="markdown">
+                                        <i class="bi bi-markdown me-1"></i>Markdown
+                                    </label>
+                                    
+                                    <input type="radio" class="btn-check" name="output_format" id="json" value="json">
+                                    <label class="btn btn-outline-primary" for="json">
+                                        <i class="bi bi-braces me-1"></i>JSON
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="split_pages" name="split_pages" checked>
+                                        <label class="form-check-label" for="split_pages">Split Pages</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="create_index" name="create_index" checked>
+                                        <label class="form-check-label" for="create_index">Create Index</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="preserve_code_blocks" name="preserve_code_blocks" checked>
+                                        <label class="form-check-label" for="preserve_code_blocks">Code Blocks</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                            <i class="bi bi-lightning-charge me-2"></i>Generate Documentation
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Form validation and loading state
+(function () {
+    'use strict'
+    
+    const form = document.querySelector('form')
+    const submitBtn = document.getElementById('submit-btn')
+    
+    // Add custom styles for loading state
+    const style = document.createElement('style')
+    style.textContent = `
+        .btn:disabled { cursor: not-allowed; }
+        form.loading .form-control,
+        form.loading .btn-check,
+        form.loading .form-check-input { pointer-events: none; opacity: 0.7; }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .loading-content {
+            text-align: center;
+            background: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .spinner-border { width: 3rem; height: 3rem; }
+    `
+    document.head.appendChild(style)
+    
+    form.addEventListener('submit', function (event) {
+        if (!form.checkValidity()) {
+            event.preventDefault()
+            event.stopPropagation()
+            form.classList.add('was-validated')
+            return
+        }
+        
+        // Show loading overlay
+        const overlay = document.createElement('div')
+        overlay.className = 'loading-overlay'
+        overlay.innerHTML = `
+            <div class="loading-content">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h4 class="mb-2">Generating Documentation</h4>
+                <div class="text-muted">This may take a few minutes...</div>
+            </div>
+        `
+        document.body.appendChild(overlay)
+        
+        // Disable form
+        form.classList.add('loading')
+        submitBtn.disabled = true
+    })
+})()
+</script>
+{% endblock %}
