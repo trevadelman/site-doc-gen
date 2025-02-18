@@ -128,17 +128,109 @@
                                     <i class="bi bi-trash me-1"></i>Delete
                                 </button>
                                 <div class="btn-group">
+                                    <button class="btn btn-primary" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#previewModal-{{ site.name }}">
+                                        <i class="bi bi-eye me-2"></i>Preview
+                                    </button>
                                     <a href="{{ url_for('serve_output', filename=site.path) }}" 
-                                       class="btn btn-primary" target="_blank">
-                                        <i class="bi bi-book me-2"></i>View Docs
+                                       class="btn btn-outline-primary" target="_blank"
+                                       title="Open in new tab">
+                                        <i class="bi bi-box-arrow-up-right"></i>
                                     </a>
                                     {% if site.source_url %}
                                         <a href="{{ site.source_url }}" target="_blank" 
                                            class="btn btn-outline-primary" title="View Source">
-                                            <i class="bi bi-box-arrow-up-right"></i>
+                                            <i class="bi bi-github"></i>
                                         </a>
                                     {% endif %}
                                 </div>
+
+                            <!-- Preview Modal -->
+                            <div class="modal fade preview-modal" id="previewModal-{{ site.name }}" tabindex="-1">
+                                <div class="modal-dialog modal-fullscreen">
+                                    <div class="modal-content bg-light">
+                                        <!-- Site Header (kept visible) -->
+                                        <div class="navbar navbar-expand-lg bg-white shadow-sm">
+                                            <div class="container-fluid px-4">
+                                                <a class="navbar-brand">
+                                                    <i class="bi bi-book"></i> Site Doc Gen
+                                                </a>
+                                            </div>
+                                        </div>
+
+                                        <!-- Preview Controls -->
+                                        <div class="preview-header py-2 px-4 bg-white border-bottom">
+                                            <div class="d-flex align-items-center justify-content-between">
+                                                <div class="d-flex align-items-center gap-4">
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        {% if 'github' in site.name %}
+                                                            <i class="bi bi-github fs-4 text-primary"></i>
+                                                        {% else %}
+                                                            <i class="bi bi-globe fs-4 text-primary"></i>
+                                                        {% endif %}
+                                                        <h5 class="modal-title mb-0">{{ site.name }}</h5>
+                                                    </div>
+                                                    <div class="preview-controls d-flex gap-3">
+                                                        <div class="btn-group">
+                                                            <button class="btn btn-sm btn-outline-secondary" 
+                                                                    onclick="document.getElementById('preview-{{ site.name }}').contentWindow.history.back()"
+                                                                    title="Back">
+                                                                <i class="bi bi-arrow-left"></i>
+                                                            </button>
+                                                            <button class="btn btn-sm btn-outline-secondary" 
+                                                                    onclick="document.getElementById('preview-{{ site.name }}').contentWindow.history.forward()"
+                                                                    title="Forward">
+                                                                <i class="bi bi-arrow-right"></i>
+                                                            </button>
+                                                            <button class="btn btn-sm btn-outline-secondary" 
+                                                                    onclick="document.getElementById('preview-{{ site.name }}').contentWindow.location.reload()"
+                                                                    title="Reload">
+                                                                <i class="bi bi-arrow-clockwise"></i>
+                                                            </button>
+                                                        </div>
+                                                        <a href="{{ url_for('serve_output', filename=site.path) }}" 
+                                                           target="_blank"
+                                                           class="btn btn-sm btn-primary"
+                                                           title="Open in new tab">
+                                                            <i class="bi bi-box-arrow-up-right me-1"></i>
+                                                            Open in new tab
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Preview Content -->
+                                        <div class="preview-content p-4">
+                                            <!-- Loading Spinner -->
+                                            <div class="iframe-loader position-absolute top-50 start-50 translate-middle">
+                                                <div class="spinner-border text-primary" role="status">
+                                                    <span class="visually-hidden">Loading...</span>
+                                                </div>
+                                            </div>
+                                            <div class="preview-frame bg-white rounded-3 shadow-sm overflow-hidden">
+                                                <iframe id="preview-{{ site.name }}"
+                                                        src="{{ url_for('serve_output', filename=site.path) }}"
+                                                        class="w-100 border-0"
+                                                        onload="document.querySelector('#previewModal-{{ site.name }} .iframe-loader').style.display='none';">
+                                                </iframe>
+                                            </div>
+                                        </div>
+
+                                        <!-- Site Footer (kept visible) -->
+                                        <div class="preview-footer mt-auto py-3 bg-white border-top">
+                                            <div class="container-fluid px-4">
+                                                <div class="d-flex justify-content-between align-items-center text-muted small">
+                                                    <div>Site Doc Gen v1.0.0</div>
+                                                    <div>Documentation Preview</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             </div>
                         </div>
                     </div>
