@@ -13,11 +13,22 @@
                 <form method="POST" class="needs-validation" novalidate>
                     <!-- Source URL -->
                     <div class="mb-4">
-                        <label for="url" class="form-label fw-bold">Source URL</label>
-                        <div class="input-group">
+                        <label for="url" class="form-label fw-bold d-flex align-items-center gap-2">
+                            Source URL
+                            <i class="bi bi-question-circle text-primary" 
+                               data-bs-toggle="tooltip" 
+                               data-bs-placement="right"
+                               title="Enter the URL of a GitHub repository or website you want to generate documentation for. Must start with http:// or https://."></i>
+                        </label>
+                        <div class="input-group has-validation">
                             <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
                             <input type="url" class="form-control" id="url" name="url" required 
-                                   placeholder="https://github.com/user/repo or https://website.com">
+                                   placeholder="https://github.com/user/repo or https://website.com"
+                                   pattern="https?://.+"
+                                   title="Please enter a valid URL starting with http:// or https://">
+                            <div class="invalid-feedback">
+                                Please enter a valid URL starting with http:// or https://
+                            </div>
                         </div>
                         <div class="form-text text-muted">
                             <i class="bi bi-info-circle me-1"></i>Enter a GitHub repository URL or website URL
@@ -27,41 +38,90 @@
                     <!-- Crawling Settings -->
                     <div class="card mb-4">
                         <div class="card-header bg-light">
-                            <h5 class="mb-0">
-                                <i class="bi bi-gear me-2"></i>Crawling Settings
-                            </h5>
+                            <button class="btn btn-link text-decoration-none p-0 w-100 text-start d-flex align-items-center" 
+                                    type="button" 
+                                    data-bs-toggle="collapse" 
+                                    data-bs-target="#crawlingSettings"
+                                    aria-expanded="false"
+                                    class="collapsed">
+                                <h5 class="mb-0 flex-grow-1">
+                                    <i class="bi bi-gear me-2"></i>Crawling Settings
+                                </h5>
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
                         </div>
-                        <div class="card-body">
+                        <div class="collapse" id="crawlingSettings">
+                            <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label for="concurrency" class="form-label">Concurrency</label>
+                                        <label for="concurrency" class="form-label d-flex align-items-center gap-2">
+                                            Concurrency
+                                            <i class="bi bi-question-circle text-primary" 
+                                               data-bs-toggle="tooltip"
+                                               data-bs-placement="right" 
+                                               title="Number of concurrent requests to make while crawling. Higher values may be faster but could overload the server."></i>
+                                        </label>
                                         <input type="number" class="form-control" id="concurrency" name="concurrency" 
-                                               value="3" min="1" max="10">
+                                               value="3" min="1" max="10" required>
+                                        <div class="invalid-feedback">
+                                            Please enter a number between 1 and 10
+                                        </div>
                                         <div class="form-text">Concurrent requests (1-10)</div>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label for="max_pages" class="form-label">Max Pages</label>
+                                        <label for="max_pages" class="form-label d-flex align-items-center gap-2">
+                                            Max Pages
+                                            <i class="bi bi-question-circle text-primary" 
+                                               data-bs-toggle="tooltip"
+                                               data-bs-placement="right" 
+                                               title="Maximum number of pages to process. Set to 0 for unlimited pages. Use this to limit large documentation sets."></i>
+                                        </label>
                                         <input type="number" class="form-control" id="max_pages" name="max_pages" 
-                                               value="0" min="0">
+                                               value="0" min="0" required>
+                                        <div class="invalid-feedback">
+                                            Please enter a number greater than or equal to 0
+                                        </div>
                                         <div class="form-text">0 for unlimited</div>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="mb-3">
-                                <label for="match" class="form-label">URL Patterns</label>
+                                <label for="match" class="form-label d-flex align-items-center gap-2">
+                                    URL Patterns
+                                    <i class="bi bi-question-circle text-primary" 
+                                       data-bs-toggle="tooltip"
+                                       data-bs-placement="right" 
+                                       title="Optional comma-separated patterns to filter which URLs to process. Use * as a wildcard. Example: */docs/*,*/api/* will only process URLs containing /docs/ or /api/."></i>
+                                </label>
                                 <input type="text" class="form-control" id="match" name="match" 
-                                       placeholder="*/docs/*,*/api/*">
+                                       placeholder="*/docs/*,*/api/*"
+                                       pattern="^(\*\/[^,]+\/\*)(,\*\/[^,]+\/\*)*$|^$"
+                                       title="Enter patterns like */docs/*,*/api/* or leave empty">
+                                <div class="invalid-feedback">
+                                    Please use the format */path/* separated by commas, or leave empty
+                                </div>
                                 <div class="form-text">Comma-separated patterns (e.g., */docs/*,*/api/*)</div>
                             </div>
 
                             <div class="mb-3">
-                                <label for="content_selector" class="form-label">Content Selector</label>
+                                <label for="content_selector" class="form-label d-flex align-items-center gap-2">
+                                    Content Selector
+                                    <i class="bi bi-question-circle text-primary" 
+                                       data-bs-toggle="tooltip"
+                                       data-bs-placement="right" 
+                                       title="Optional CSS selector to target specific content on each page. Example: article.content will only extract content within <article class='content'> elements."></i>
+                                </label>
                                 <input type="text" class="form-control" id="content_selector" name="content_selector" 
-                                       placeholder="article.content">
+                                       placeholder="article.content"
+                                       pattern="^[a-zA-Z0-9#\.\[\]=\^\$\*\s\-_]*$|^$"
+                                       title="Enter a valid CSS selector or leave empty">
+                                <div class="invalid-feedback">
+                                    Please enter a valid CSS selector or leave empty
+                                </div>
                                 <div class="form-text">CSS selector for main content</div>
                             </div>
                         </div>
@@ -70,11 +130,20 @@
                     <!-- Output Settings -->
                     <div class="card mb-4">
                         <div class="card-header bg-light">
-                            <h5 class="mb-0">
-                                <i class="bi bi-file-earmark-text me-2"></i>Output Settings
-                            </h5>
+                            <button class="btn btn-link text-decoration-none p-0 w-100 text-start d-flex align-items-center" 
+                                    type="button" 
+                                    data-bs-toggle="collapse" 
+                                    data-bs-target="#outputSettings"
+                                    aria-expanded="false"
+                                    class="collapsed">
+                                <h5 class="mb-0 flex-grow-1">
+                                    <i class="bi bi-file-earmark-text me-2"></i>Output Settings
+                                </h5>
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
                         </div>
-                        <div class="card-body">
+                        <div class="collapse" id="outputSettings">
+                            <div class="card-body">
                             <div class="mb-3">
                                 <label class="form-label d-block">Output Format</label>
                                 <div class="btn-group" role="group">
@@ -125,20 +194,69 @@
 </div>
 
 <script>
-// Form validation and loading state
+// Initialize tooltips and form validation
 (function () {
     'use strict'
     
+    // Initialize all tooltips
+    const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+    tooltips.forEach(el => new bootstrap.Tooltip(el))
+    
     const form = document.querySelector('form')
     const submitBtn = document.getElementById('submit-btn')
+    const inputs = form.querySelectorAll('input')
     
-    // Add custom styles for loading state
+    // Real-time validation feedback
+    inputs.forEach(input => {
+        input.addEventListener('input', function() {
+            if (input.checkValidity()) {
+                input.classList.remove('is-invalid')
+                input.classList.add('is-valid')
+            } else {
+                input.classList.remove('is-valid')
+                if (input.value) {
+                    input.classList.add('is-invalid')
+                }
+            }
+        })
+    })
+    
+    // Add custom styles for validation, loading state, and collapse
     const style = document.createElement('style')
     style.textContent = `
+        /* Collapse Animation */
+        .collapse {
+            transition: all 0.2s ease-out;
+        }
+        
+        .card-header .btn-link {
+            color: var(--text-color);
+        }
+        
+        .card-header .btn-link:hover {
+            color: var(--primary-color);
+        }
+        
+        .card-header .btn-link .bi-chevron-down {
+            transition: transform 0.2s;
+        }
+        
+        .card-header .btn-link.collapsed .bi-chevron-down {
+            transform: rotate(-90deg);
+        }
+        
         .btn:disabled { cursor: not-allowed; }
         form.loading .form-control,
         form.loading .btn-check,
         form.loading .form-check-input { pointer-events: none; opacity: 0.7; }
+        .form-control.is-valid,
+        .was-validated .form-control:valid {
+            border-color: #198754;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right calc(0.375em + 0.1875rem) center;
+            background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+        }
         .loading-overlay {
             position: fixed;
             top: 0;
