@@ -111,6 +111,18 @@ class DocGen:
                 logger.error(f"Error fetching {url}: {response.status}")
                 return None
     
+    def _check_github_patterns(self, path: str, patterns: List[str]) -> List[str]:
+        """Check if a path matches any GitHub patterns"""
+        matches = []
+        for pattern in patterns:
+            if pattern.endswith('/*'):
+                base_pattern = pattern[:-2]
+                if path.startswith(base_pattern + '/') or path == base_pattern:
+                    matches.append(f"matches directory pattern: {pattern}")
+            elif pattern == path:
+                matches.append(f"matches exact pattern: {pattern}")
+        return matches
+    
     async def _process_github_repo(
         self,
         owner: str,
@@ -124,7 +136,31 @@ class DocGen:
             
             for item in contents:
                 if item["type"] == "file":
-                    if any(item["name"].endswith(ext) for ext in [".md", ".py"]):
+                    # Check if file path matches patterns
+                    file_path = item["path"]
+                    if not self.config.match:
+                        print(f"\nProcessing GitHub file (no pattern restrictions): {file_path}")
+                    else:
+                        matches = self._check_github_patterns(file_path, self.config.match)
+                        if matches:
+                            print(f"\nProcessing GitHub file: {file_path}")
+                            print(f"Pattern matches: {', '.join(matches)}")
+                        else:
+                            print(f"✗ Skipped GitHub file: {file_path} (no pattern matches)")
+                            continue
+                    
+                    # Process file if it matches patterns
+                    # Skip binary files and catch all text-based files
+                    if not any(item["name"].endswith(ext) for ext in [
+                        # Binary files to skip
+                        ".exe", ".dll", ".so", ".dylib", ".pyc", ".pyo",
+                        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".ico",
+                        ".mp3", ".mp4", ".avi", ".mov", ".wav",
+                        ".zip", ".tar", ".gz", ".7z", ".rar",
+                        ".pdf", ".doc", ".docx", ".xls", ".xlsx",
+                        ".db", ".sqlite", ".sqlite3",
+                        ".bin", ".dat"
+                    ]):
                         content = await self._fetch_github_file(item["download_url"])
                         if content:
                             # Create a page for the file
@@ -168,9 +204,21 @@ class DocGen:
                             ))
                 
                 elif item["type"] == "dir":
-                    # Recursively process subdirectories
-                    dir_pages = await process_directory(item["path"])
-                    pages.extend(dir_pages)
+                    # For directories, check if any pattern matches this directory
+                    dir_path = item["path"]
+                    if not self.config.match:
+                        print(f"\nProcessing GitHub directory (no pattern restrictions): {dir_path}")
+                        dir_pages = await process_directory(dir_path)
+                        pages.extend(dir_pages)
+                    else:
+                        matches = self._check_github_patterns(dir_path, self.config.match)
+                        if matches:
+                            print(f"\nProcessing GitHub directory: {dir_path}")
+                            print(f"Pattern matches: {', '.join(matches)}")
+                            dir_pages = await process_directory(dir_path)
+                            pages.extend(dir_pages)
+                        else:
+                            print(f"✗ Skipped GitHub directory: {dir_path} (no pattern matches)")
             
             return pages
         
@@ -247,11 +295,19 @@ class DocGen:
         links = []
         for a in soup.find_all("a", href=True):
             href = a["href"]
+            # Skip fragment-only links and javascript
+            if href.startswith('#') or href.startswith('javascript:'):
+                continue
+                
             full_url = self._normalize_url(urljoin(base_url, href))
+            parsed_url = urlparse(full_url)
+            
+            # Only process URLs from the same domain
             if (
                 full_url
                 and self._is_same_domain(full_url)
-                and self.config.should_process_url(full_url)
+                and parsed_url.path  # Ensure there's a path
+                and self.config.should_process_url(parsed_url.path)  # Check path against patterns
             ):
                 links.append(full_url)
         return links
@@ -539,19 +595,36 @@ class DocGen:
                 or len(pages) < self.config.max_pages
             ):
                 current_url = to_process.pop(0)
-                page = await self._process_page(current_url)
+                parsed_url = urlparse(current_url)
                 
-                if page:
-                    print(f"Successfully processed: {current_url}")
-                    pages.append(page)
+                # Skip if already processed
+                if current_url in self.processed_urls:
+                    continue
+                
+                # Check if this URL's path matches any of our patterns
+                if not self.config.match or self.config.should_process_url(parsed_url.path):
+                    print(f"\nProcessing: {parsed_url.path}")
+                    page = await self._process_page(current_url)
                     
-                    # Extract and add new URLs to process
-                    soup = BeautifulSoup(page.content, "html.parser")
-                    new_urls = self._extract_links(soup, current_url)
-                    to_process.extend(
-                        url for url in new_urls
-                        if url not in self.processed_urls
-                    )
+                    if page:
+                        print(f"✓ Success: {parsed_url.path}")
+                        pages.append(page)
+                        
+                        # Extract and add new URLs to process
+                        soup = BeautifulSoup(page.content, "html.parser")
+                        new_urls = self._extract_links(soup, current_url)
+                        
+                        # Add only new URLs to process queue
+                        new_urls_to_process = [
+                            url for url in new_urls
+                            if url not in self.processed_urls and url not in to_process
+                        ]
+                        to_process.extend(new_urls_to_process)
+                        
+                        if new_urls_to_process:
+                            print(f"  Found {len(new_urls_to_process)} new URLs to process")
+                else:
+                    print(f"✗ Skipped: {parsed_url.path} (pattern mismatch)")
             
             docs = Documentation(
                 pages=pages,

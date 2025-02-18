@@ -8,6 +8,7 @@ import shutil
 from datetime import datetime
 from urllib.parse import urlparse
 from site_doc_gen import DocGen, Config
+from site_doc_gen.utils import discover_url_patterns
 import os
 
 # Get the absolute path to the site-doc-gen directory
@@ -55,6 +56,39 @@ def get_directory_size(site_dir):
             total += os.path.getsize(fp)
     return total
 
+@app.route('/discover-patterns', methods=['POST'])
+async def discover_patterns():
+    """Discover URL patterns from a given URL"""
+    url = request.json.get('url')
+    is_valid, error_msg = validate_url(url)
+    
+    if not is_valid:
+        return jsonify({'error': error_msg}), 400
+    
+    try:
+        patterns = await discover_url_patterns(url, max_depth=3, max_urls=200)
+        
+        # Format patterns for display
+        formatted_patterns = []
+        for pattern, urls in patterns.items():
+            formatted_patterns.append({
+                'pattern': pattern,
+                'example_urls': list(urls)[:3],  # Show up to 3 examples
+                'total_urls': len(urls)
+            })
+        
+        # Sort by number of URLs, most frequent first
+        formatted_patterns.sort(key=lambda x: x['total_urls'], reverse=True)
+        
+        return jsonify({
+            'patterns': formatted_patterns,
+            'total_patterns': len(formatted_patterns),
+            'total_urls': sum(p['total_urls'] for p in formatted_patterns)
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/', methods=['GET', 'POST'])
 def home():
     if request.method == 'POST':
@@ -65,10 +99,21 @@ def home():
             flash(error_msg, 'error')
             return redirect(url_for('home'))
         
+        # Get patterns from form
+        patterns_json = request.form.get('patterns')
+        patterns = []
+        if patterns_json:
+            try:
+                patterns_data = json.loads(patterns_json)
+                patterns = [p['pattern'] for p in patterns_data if p.get('selected', False)]
+            except json.JSONDecodeError:
+                flash('Error parsing selected patterns', 'error')
+                return redirect(url_for('home'))
+        
         config = Config(
             concurrency=int(request.form.get('concurrency', 3)),
             max_pages=int(request.form.get('max_pages', 0)) or None,
-            match=request.form.get('match', '').split(',') if request.form.get('match') else None,
+            match=patterns if patterns else None,
             content_selector=request.form.get('content_selector'),
             split_pages=bool(request.form.get('split_pages')),
             create_index=bool(request.form.get('create_index')),
@@ -79,8 +124,20 @@ def home():
         start_time = time.time()
         
         try:
+            print("\nStarting documentation generation...")
+            print(f"URL: {url}")
+            print(f"Selected patterns: {patterns if patterns else 'None'}")
+            
             async def process():
+                print("\nInitializing DocGen with config:")
+                print(f"- Concurrency: {config.concurrency}")
+                print(f"- Max pages: {config.max_pages}")
+                print(f"- Match patterns: {config.match}")
+                print(f"- Content selector: {config.content_selector}")
+                print(f"- Split pages: {config.split_pages}")
+                
                 async with DocGen(config) as doc_gen:
+                    print("\nProcessing site...")
                     await doc_gen.process_site(url)
                     
                     # Save metadata

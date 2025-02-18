@@ -20,18 +20,65 @@
                                data-bs-placement="right"
                                title="Enter the URL of a GitHub repository or website you want to generate documentation for. Must start with http:// or https://."></i>
                         </label>
-                        <div class="input-group has-validation">
-                            <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
-                            <input type="url" class="form-control" id="url" name="url" required 
-                                   placeholder="https://github.com/user/repo or https://website.com"
-                                   pattern="https?://.+"
-                                   title="Please enter a valid URL starting with http:// or https://">
-                            <div class="invalid-feedback">
-                                Please enter a valid URL starting with http:// or https://
+                        <div class="mb-2">
+                            <div class="input-group has-validation">
+                                <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                                <input type="url" class="form-control" id="url" name="url" required 
+                                       placeholder="https://github.com/user/repo or https://website.com"
+                                       pattern="https?://.+"
+                                       title="Please enter a valid URL starting with http:// or https://">
+                                <button type="button" class="btn btn-outline-primary" id="discover-patterns-btn">
+                                    <i class="bi bi-magic me-1"></i>Discover Patterns
+                                </button>
+                                <div class="invalid-feedback">
+                                    Please enter a valid URL starting with http:// or https://
+                                </div>
+                            </div>
+                            <div class="form-text text-muted">
+                                <i class="bi bi-info-circle me-1"></i>Enter a GitHub repository URL or website URL
                             </div>
                         </div>
-                        <div class="form-text text-muted">
-                            <i class="bi bi-info-circle me-1"></i>Enter a GitHub repository URL or website URL
+
+                        <!-- URL Pattern Discovery Results -->
+                        <div id="pattern-discovery" class="mb-4" style="display: none;">
+                            <div class="card">
+                                <div class="card-header bg-light d-flex align-items-center gap-2">
+                                    <h6 class="mb-0 flex-grow-1">
+                                        <i class="bi bi-diagram-2 me-2"></i>Discovered URL Patterns
+                                    </h6>
+                                    <span class="badge bg-primary" id="pattern-count"></span>
+                                </div>
+                                <div class="card-body p-0">
+                                    <!-- Loading State -->
+                                    <div id="pattern-loading" class="text-center py-4" style="display: none;">
+                                        <div class="spinner-border text-primary mb-2" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <div class="text-muted">Discovering URL patterns...</div>
+                                    </div>
+
+                                    <!-- Error State -->
+                                    <div id="pattern-error" class="p-4 text-danger" style="display: none;">
+                                        <i class="bi bi-exclamation-circle me-2"></i>
+                                        <span id="error-message"></span>
+                                    </div>
+
+                                    <!-- Results -->
+                                    <div id="pattern-results" style="display: none;">
+                                        <div class="list-group list-group-flush" id="pattern-list">
+                                            <!-- Pattern items will be inserted here -->
+                                        </div>
+                                        <div class="p-3 border-top bg-light d-flex gap-2">
+                                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="selectAllPatterns()">
+                                                <i class="bi bi-check-all me-1"></i>Select All
+                                            </button>
+                                            <button type="button" class="btn btn-primary btn-sm" onclick="applySelectedPatterns()">
+                                                <i class="bi bi-check2 me-1"></i>Apply Selected Patterns
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -98,12 +145,7 @@
                                        title="Optional comma-separated patterns to filter which URLs to process. Use * as a wildcard. Example: */docs/*,*/api/* will only process URLs containing /docs/ or /api/."></i>
                                 </label>
                                 <input type="text" class="form-control" id="match" name="match" 
-                                       placeholder="*/docs/*,*/api/*"
-                                       pattern="^(\*\/[^,]+\/\*)(,\*\/[^,]+\/\*)*$|^$"
-                                       title="Enter patterns like */docs/*,*/api/* or leave empty">
-                                <div class="invalid-feedback">
-                                    Please use the format */path/* separated by commas, or leave empty
-                                </div>
+                                       placeholder="*/docs/*,*/api/*">
                                 <div class="form-text">Comma-separated patterns (e.g., */docs/*,*/api/*)</div>
                             </div>
 
@@ -194,118 +236,251 @@
 </div>
 
 <script>
-// Initialize tooltips and form validation
-(function () {
+// Initialize tooltips and form validation after bootstrap loads
+window.addEventListener('load', function() {
     'use strict'
     
-    // Initialize all tooltips
-    const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]')
-    tooltips.forEach(el => new bootstrap.Tooltip(el))
-    
-    const form = document.querySelector('form')
-    const submitBtn = document.getElementById('submit-btn')
-    const inputs = form.querySelectorAll('input')
-    
-    // Real-time validation feedback
-    inputs.forEach(input => {
-        input.addEventListener('input', function() {
-            if (input.checkValidity()) {
-                input.classList.remove('is-invalid')
-                input.classList.add('is-valid')
-            } else {
-                input.classList.remove('is-valid')
-                if (input.value) {
-                    input.classList.add('is-invalid')
+    // Wait for bootstrap to be available
+    const initializeBootstrap = setInterval(() => {
+        if (window.bootstrap) {
+            clearInterval(initializeBootstrap)
+            
+            // Initialize all tooltips
+            const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+            tooltips.forEach(el => new bootstrap.Tooltip(el))
+            
+            const form = document.querySelector('form')
+            const submitBtn = document.getElementById('submit-btn')
+            const inputs = form.querySelectorAll('input')
+            const urlInput = document.getElementById('url')
+            const discoverBtn = document.getElementById('discover-patterns-btn')
+            const patternDiscovery = document.getElementById('pattern-discovery')
+            const patternLoading = document.getElementById('pattern-loading')
+            const patternError = document.getElementById('pattern-error')
+            const patternResults = document.getElementById('pattern-results')
+            const patternList = document.getElementById('pattern-list')
+            const patternCount = document.getElementById('pattern-count')
+            const errorMessage = document.getElementById('error-message')
+            
+            // Real-time validation feedback
+            inputs.forEach(input => {
+                // Skip validation for the match input
+                if (input.id === 'match') return;
+                
+                input.addEventListener('input', function() {
+                    if (input.checkValidity()) {
+                        input.classList.remove('is-invalid')
+                        input.classList.add('is-valid')
+                    } else {
+                        input.classList.remove('is-valid')
+                        if (input.value) {
+                            input.classList.add('is-invalid')
+                        }
+                    }
+                })
+            })
+
+            // Pattern Discovery
+            discoverBtn.addEventListener('click', async function() {
+                const url = urlInput.value
+                
+                if (!url || !urlInput.checkValidity()) {
+                    urlInput.classList.add('is-invalid')
+                    return
                 }
+                
+                // Show loading state
+                patternDiscovery.style.display = 'block'
+                patternLoading.style.display = 'block'
+                patternError.style.display = 'none'
+                patternResults.style.display = 'none'
+                
+                try {
+                    const response = await fetch('/discover-patterns', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ url })
+                    })
+                    
+                    const data = await response.json()
+                    
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to discover patterns')
+                    }
+                    
+                    // Update UI with results
+                    patternCount.textContent = `${data.total_patterns} patterns found`
+                    
+                    // Clear previous results
+                    patternList.innerHTML = ''
+                    
+                    // Add pattern items
+                    data.patterns.forEach(pattern => {
+                        const item = document.createElement('div')
+                        item.className = 'list-group-item'
+                        item.innerHTML = `
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input pattern-checkbox" type="checkbox" 
+                                           value="${pattern.pattern}" id="pattern-${pattern.pattern}">
+                                    <label class="form-check-label" for="pattern-${pattern.pattern}">
+                                        <code class="text-primary">${pattern.pattern}</code>
+                                        <span class="badge bg-secondary ms-2">${pattern.total_urls} URLs</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="mt-2 ms-4 small text-muted">
+                                Examples:
+                                <ul class="mb-0">
+                                    ${pattern.example_urls.map(url => `<li>${url}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `
+                        patternList.appendChild(item)
+                    })
+                    
+                    // Show results
+                    patternLoading.style.display = 'none'
+                    patternResults.style.display = 'block'
+                    
+                } catch (error) {
+                    // Show error
+                    errorMessage.textContent = error.message
+                    patternLoading.style.display = 'none'
+                    patternError.style.display = 'block'
+                }
+            })
+
+            // Select all patterns
+            window.selectAllPatterns = function() {
+                document.querySelectorAll('.pattern-checkbox').forEach(cb => cb.checked = true)
             }
-        })
-    })
+
+            // Apply selected patterns
+            window.applySelectedPatterns = function() {
+                const selectedPatterns = Array.from(document.querySelectorAll('.pattern-checkbox:checked'))
+                    .map(cb => cb.value)
+                    .join(',')
+                
+                document.getElementById('match').value = selectedPatterns
+                
+                // Collapse crawling settings if they're not already visible
+                const crawlingSettings = document.getElementById('crawlingSettings')
+                const bsCollapse = new bootstrap.Collapse(crawlingSettings, { toggle: false })
+                bsCollapse.show()
+                
+                // Scroll to the patterns input
+                document.getElementById('match').scrollIntoView({ behavior: 'smooth' })
+            }
+            
+            // Form submission
+            form.addEventListener('submit', function (event) {
+                // Get all required inputs except match
+                const requiredInputs = Array.from(form.querySelectorAll('input[required]')).filter(input => input.id !== 'match')
+                const isValid = requiredInputs.every(input => input.checkValidity())
+                
+                if (!isValid) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    form.classList.add('was-validated')
+                    return
+                }
+
+                // Get selected patterns
+                const selectedPatterns = Array.from(document.querySelectorAll('.pattern-checkbox'))
+                    .map(cb => ({
+                        pattern: cb.value,
+                        selected: cb.checked
+                    }))
+
+                // Create hidden input for patterns
+                const patternsInput = document.createElement('input')
+                patternsInput.type = 'hidden'
+                patternsInput.name = 'patterns'
+                patternsInput.value = JSON.stringify(selectedPatterns)
+                form.appendChild(patternsInput)
+                
+                // Show loading overlay
+                const overlay = document.createElement('div')
+                overlay.className = 'loading-overlay'
+                overlay.innerHTML = `
+                    <div class="loading-content">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <h4 class="mb-2">Generating Documentation</h4>
+                        <div class="text-muted">This may take a few minutes...</div>
+                    </div>
+                `
+                document.body.appendChild(overlay)
+                
+                // Disable form
+                form.classList.add('loading')
+                submitBtn.disabled = true
+            })
+        }
+    }, 100)
+})
+
+// Add custom styles
+const style = document.createElement('style')
+style.textContent = `
+    /* Collapse Animation */
+    .collapse {
+        transition: all 0.2s ease-out;
+    }
     
-    // Add custom styles for validation, loading state, and collapse
-    const style = document.createElement('style')
-    style.textContent = `
-        /* Collapse Animation */
-        .collapse {
-            transition: all 0.2s ease-out;
-        }
-        
-        .card-header .btn-link {
-            color: var(--text-color);
-        }
-        
-        .card-header .btn-link:hover {
-            color: var(--primary-color);
-        }
-        
-        .card-header .btn-link .bi-chevron-down {
-            transition: transform 0.2s;
-        }
-        
-        .card-header .btn-link.collapsed .bi-chevron-down {
-            transform: rotate(-90deg);
-        }
-        
-        .btn:disabled { cursor: not-allowed; }
-        form.loading .form-control,
-        form.loading .btn-check,
-        form.loading .form-check-input { pointer-events: none; opacity: 0.7; }
-        .form-control.is-valid,
-        .was-validated .form-control:valid {
-            border-color: #198754;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right calc(0.375em + 0.1875rem) center;
-            background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
-        }
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-        }
-        .loading-content {
-            text-align: center;
-            background: white;
-            padding: 2rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .spinner-border { width: 3rem; height: 3rem; }
-    `
-    document.head.appendChild(style)
+    .card-header .btn-link {
+        color: var(--text-color);
+    }
     
-    form.addEventListener('submit', function (event) {
-        if (!form.checkValidity()) {
-            event.preventDefault()
-            event.stopPropagation()
-            form.classList.add('was-validated')
-            return
-        }
-        
-        // Show loading overlay
-        const overlay = document.createElement('div')
-        overlay.className = 'loading-overlay'
-        overlay.innerHTML = `
-            <div class="loading-content">
-                <div class="spinner-border text-primary mb-3" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <h4 class="mb-2">Generating Documentation</h4>
-                <div class="text-muted">This may take a few minutes...</div>
-            </div>
-        `
-        document.body.appendChild(overlay)
-        
-        // Disable form
-        form.classList.add('loading')
-        submitBtn.disabled = true
-    })
-})()
+    .card-header .btn-link:hover {
+        color: var(--primary-color);
+    }
+    
+    .card-header .btn-link .bi-chevron-down {
+        transition: transform 0.2s;
+    }
+    
+    .card-header .btn-link.collapsed .bi-chevron-down {
+        transform: rotate(-90deg);
+    }
+    
+    .btn:disabled { cursor: not-allowed; }
+    form.loading .form-control,
+    form.loading .btn-check,
+    form.loading .form-check-input { pointer-events: none; opacity: 0.7; }
+    .form-control.is-valid,
+    .was-validated .form-control:valid {
+        border-color: #198754;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right calc(0.375em + 0.1875rem) center;
+        background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+    }
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+    .loading-content {
+        text-align: center;
+        background: white;
+        padding: 2rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .spinner-border { width: 3rem; height: 3rem; }
+`
+document.head.appendChild(style)
 </script>
 {% endblock %}
